@@ -1,0 +1,143 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AnimeX - Anime Universe</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#090910;color:white;font-family:Arial,sans-serif}
+header{padding:18px 5%;display:flex;justify-content:space-between;align-items:center;background:#11111d;position:sticky;top:0;z-index:5}
+.logo{font-size:27px;font-weight:900;color:#a78bfa}
+nav{color:#ddd;font-size:13px}
+.hero{padding:55px 6%;background:linear-gradient(100deg,#17112e,#111122)}
+.hero h1{font-size:38px;margin:0 0 12px}
+.hero p{color:#c5c1d5}
+.search{padding:12px;border-radius:9px;border:1px solid #444;background:#191927;color:white;width:100%;max-width:500px;font-size:15px}
+button{padding:11px 17px;border:0;border-radius:8px;background:#8959ed;color:white;font-weight:bold;cursor:pointer}
+main{padding:25px 5%}
+h2{font-size:21px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:16px}
+.card{background:#151522;border-radius:10px;overflow:hidden;cursor:pointer}
+.card img{width:100%;height:195px;object-fit:cover;display:block}
+.card h3{font-size:13px;padding:0 9px;margin:10px 0}
+.card p{font-size:11px;color:#aaa;padding:0 9px 8px}
+#message{color:#aaa;padding:20px}
+#details{display:none;background:#171725;padding:20px;border-radius:12px;margin-bottom:25px}
+#details img{width:110px;float:left;margin-right:15px;border-radius:8px}
+footer{text-align:center;padding:30px;color:#888}
+</style>
+</head>
+<body>
+<header>
+ <div class="logo">AnimeX</div>
+ <nav>HOME　 POPULAR　 ANIME</nav>
+</header>
+
+<section class="hero">
+ <h1>Welcome to AnimeX</h1>
+ <p>Your Anime Universe. Discover your next adventure.</p>
+ <input id="search" class="search" placeholder="Search anime...">
+ <button onclick="searchAnime()">Search</button>
+</section>
+
+<main>
+ <section id="details"></section>
+ <h2 id="heading">🔥 Popular Anime</h2>
+ <div id="message">Loading anime...</div>
+ <div class="grid" id="anime"></div>
+</main>
+
+<footer>© 2026 AnimeX. All rights reserved.</footer>
+
+<script>
+const endpoint="https://graphql.anilist.co";
+
+async function loadAnime(search=""){
+ const box=document.getElementById("anime");
+ document.getElementById("message").textContent="Loading...";
+ box.innerHTML="";
+ const query=`
+ query ($search:String) {
+ Page(page:1,perPage:24) {
+ media(type:ANIME,search:$search,sort:POPULARITY_DESC,isAdult:false) {
+ id
+ title { romaji english }
+ coverImage { large }
+ episodes
+ averageScore
+ genres
+ description(asHtml:false)
+ }
+ }
+ }`;
+ try{
+ const response=await fetch(endpoint,{
+ method:"POST",
+ headers:{"Content-Type":"application/json","Accept":"application/json"},
+ body:JSON.stringify({query,variables:{search:search||null}})
+ });
+ if(!response.ok) throw new Error("API unavailable");
+ const data=await response.json();
+ const items=data.data.Page.media;
+ document.getElementById("message").textContent=
+ items.length?"":"No anime found.";
+ items.forEach(a=>{
+ const card=document.createElement("div");
+ card.className="card";
+ const img=document.createElement("img");
+ img.src=a.coverImage.large;
+ img.alt=a.title.english||a.title.romaji;
+ const title=document.createElement("h3");
+ title.textContent=a.title.english||a.title.romaji;
+ const info=document.createElement("p");
+ info.textContent="⭐ "+(a.averageScore||"N/A")+" · "+(a.episodes||"?")+" Episodes";
+ card.append(img,title,info);
+ card.onclick=()=>showDetails(a);
+ box.appendChild(card);
+ });
+ }catch(e){
+ document.getElementById("message").textContent=
+ "Could not load anime. Please try again.";
+ }
+}
+
+function searchAnime(){
+ const value=document.getElementById("search").value.trim();
+ document.getElementById("heading").textContent=
+ value?"🔎 Search Results":"🔥 Popular Anime";
+ loadAnime(value);
+}
+
+function showDetails(a){
+ const d=document.getElementById("details");
+ d.style.display="block";
+ d.innerHTML="";
+ const img=document.createElement("img");
+ img.src=a.coverImage.large;
+ const title=document.createElement("h2");
+ title.textContent=a.title.english||a.title.romaji;
+ const info=document.createElement("p");
+ info.textContent="⭐ "+(a.averageScore||"N/A")+
+ " | Episodes: "+(a.episodes||"Unknown");
+ const desc=document.createElement("p");
+ desc.textContent=(a.description||"No description available.")
+ .replace(/<[^>]*>/g,"");
+ const genres=document.createElement("p");
+ genres.textContent=(a.genres||[]).join(" · ");
+ const close=document.createElement("button");
+ close.textContent="Close";
+ close.onclick=()=>d.style.display="none";
+ d.append(img,title,info,desc,genres,close);
+ d.scrollIntoView({behavior:"smooth"});
+}
+
+document.getElementById("search").addEventListener("keydown",e=>{
+ if(e.key==="Enter")searchAnime();
+});
+
+loadAnime();
+</script>
+</body>
+</html>
